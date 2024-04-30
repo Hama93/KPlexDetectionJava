@@ -12,33 +12,47 @@ import java.util.List;
 import java.util.Set;
 import kplexdetection.javaClassesAndInterfaces.Graph;
 import kplexdetection.javaClassesAndInterfaces.GraphMap;
+import java.util.concurrent.*;
 
 /**
  *
  * @author haythem
  */
 public class KPlexDetection {
-    private static void detectKPlexRecursive(Graph g, int k, Set<String> candidate_set, List<Set<String>> listOfMaximals){
-        if(g.isMaximalKPlex(candidate_set, k) && (!listOfMaximals.contains(candidate_set))){
+
+    private static ExecutorService executor = Executors.newCachedThreadPool();
+
+    private static void detectKPlexRecursive(Graph g, int k, Set<String> candidate_set, List<Set<String>> listOfMaximals) {
+        if (g.isMaximalKPlex(candidate_set, k) && (!listOfMaximals.contains(candidate_set))) {
             listOfMaximals.add(candidate_set);
-        }else{
+        } else {
             Graph graph = g.getGraphInducedBy(candidate_set);
-            if(graph.isConnected() && (!graph.isKPlex(k))){
-                Set<String> next_set;
-                for(String vertex: candidate_set){
-                    next_set = new HashSet<>(candidate_set);
+            if (graph.isConnected() && (!graph.isKPlex(k))) {
+                List<Future<?>> futures = new ArrayList<>();
+                for (String vertex : candidate_set) {
+                    Set<String> next_set = new HashSet<>(candidate_set);
                     next_set.remove(vertex);
-                    detectKPlexRecursive(g, k, next_set, listOfMaximals);
+                    Future<?> future = executor.submit(() -> detectKPlexRecursive(g, k, next_set, listOfMaximals));
+                    futures.add(future);
+                }
+                for (Future<?> future : futures) {
+                    try {
+                        future.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }
     }
-    private static List<Set<String>> detectKPlex(Graph g, int k){
+
+    private static List<Set<String>> detectKPlex(Graph g, int k) {
         Set<String> vertices = g.getVertices();
         List<Set<String>> listOfMaximals = new ArrayList<>();
         detectKPlexRecursive(g, k, vertices, listOfMaximals);
         return listOfMaximals;
     }
+
     /**
      * @param args the command line arguments
      */
@@ -49,15 +63,18 @@ public class KPlexDetection {
             g.addEdges(lines);
             int kmax = g.getMaxK();
             List<Set<String>> ll;
-            for(int k = kmax; k >= 2; k--){
+            for (int k = kmax; k >= 2; k--) {
+                long startTime = System.nanoTime();  // Start timing here
                 ll = detectKPlex(g, k);
-                /*System.out.println("List for k = " + k + " : ");
-                System.out.println(ll);*/
+                long endTime = System.nanoTime();  // End timing here
+                double duration = (double) (endTime - startTime) / 1_000_000_000;  // Compute the duration in seconds
+                System.out.println("Execution time for k = " + k + " : " + duration + " seconds");
                 System.out.println("Number of " + k + "-plex detected = " + ll.size());
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+
     }
 
 }
