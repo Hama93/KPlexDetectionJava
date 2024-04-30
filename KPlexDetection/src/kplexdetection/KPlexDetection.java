@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Set;
 import kplexdetection.javaClassesAndInterfaces.Graph;
 import kplexdetection.javaClassesAndInterfaces.GraphMap;
-import java.util.concurrent.*;
 
 /**
  *
@@ -20,27 +19,16 @@ import java.util.concurrent.*;
  */
 public class KPlexDetection {
 
-    private static ExecutorService executor = Executors.newCachedThreadPool();
-
     private static void detectKPlexRecursive(Graph g, int k, Set<String> candidate_set, List<Set<String>> listOfMaximals) {
         if (g.isMaximalKPlex(candidate_set, k) && (!listOfMaximals.contains(candidate_set))) {
             listOfMaximals.add(candidate_set);
         } else {
             Graph graph = g.getGraphInducedBy(candidate_set);
             if (graph.isConnected() && (!graph.isKPlex(k))) {
-                List<Future<?>> futures = new ArrayList<>();
                 for (String vertex : candidate_set) {
                     Set<String> next_set = new HashSet<>(candidate_set);
                     next_set.remove(vertex);
-                    Future<?> future = executor.submit(() -> detectKPlexRecursive(g, k, next_set, listOfMaximals));
-                    futures.add(future);
-                }
-                for (Future<?> future : futures) {
-                    try {
-                        future.get();
-                    } catch (InterruptedException | ExecutionException e) {
-                        e.printStackTrace();
-                    }
+                    detectKPlexRecursive(g, k, next_set, listOfMaximals);
                 }
             }
         }
