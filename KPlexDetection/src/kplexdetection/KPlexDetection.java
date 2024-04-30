@@ -7,8 +7,10 @@ package kplexdetection;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import kplexdetection.javaClassesAndInterfaces.Graph;
 import kplexdetection.javaClassesAndInterfaces.GraphMap;
@@ -19,17 +21,27 @@ import kplexdetection.javaClassesAndInterfaces.GraphMap;
  */
 public class KPlexDetection {
 
+private static Map<Set<String>, Boolean> memo = new HashMap<>();
+
     private static void detectKPlexRecursive(Graph g, int k, Set<String> candidate_set, List<Set<String>> listOfMaximals) {
-        if (g.isMaximalKPlex(candidate_set, k) && (!listOfMaximals.contains(candidate_set))) {
-            listOfMaximals.add(candidate_set);
+        if (memo.containsKey(candidate_set)) {
+            if (memo.get(candidate_set) && (!listOfMaximals.contains(candidate_set))) {
+                listOfMaximals.add(candidate_set);
+            }
         } else {
-            Graph graph = g.getGraphInducedBy(candidate_set);
-            if (graph.isConnected() && (!graph.isKPlex(k))) {
-                for (String vertex : candidate_set) {
-                    Set<String> next_set = new HashSet<>(candidate_set);
-                    next_set.remove(vertex);
-                    detectKPlexRecursive(g, k, next_set, listOfMaximals);
+            if (g.isMaximalKPlex(candidate_set, k)) {
+                listOfMaximals.add(candidate_set);
+                memo.put(candidate_set, true);
+            } else {
+                Graph graph = g.getGraphInducedBy(candidate_set);
+                if (graph.isConnected() && (!graph.isKPlex(k))) {
+                    for (String vertex : candidate_set) {
+                        Set<String> next_set = new HashSet<>(candidate_set);
+                        next_set.remove(vertex);
+                        detectKPlexRecursive(g, k, next_set, listOfMaximals);
+                    }
                 }
+                memo.put(candidate_set, false);
             }
         }
     }
